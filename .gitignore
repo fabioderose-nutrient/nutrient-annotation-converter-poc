@@ -1,0 +1,24 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+
+# DocuVieware session cache and uploaded PDFs
+Cache/
+AnnotationConverterApi/wwwroot/uploads/
+
+# Local settings and secrets
+.env
+.env.*
+!.env.example
+
+# Python sample generator
+.venv*/
+__pycache__/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

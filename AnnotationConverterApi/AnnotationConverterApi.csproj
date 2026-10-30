@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>AnnotationConverterApi</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- DocuVieware for .NET (cross-platform), includes GdPicture.API -->
+    <PackageReference Include="DocuVieware.API" Version="3.4.7" />
+  </ItemGroup>
+</Project>

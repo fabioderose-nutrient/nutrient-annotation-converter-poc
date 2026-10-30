@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en" style="height: 100%">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Annotation Converter: DocuVieware &harr; Web SDK</title>
+
+  <!-- jQuery required by the DocuVieware client API -->
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-rgb: 37, 99, 235;
+      --secondary: #3b82f6;
+      --accent: #64748b;
+      --muted: #cbd5e1;
+      --surface: #f1f5f9;
+      --text: #0f172a;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --header: #1e293b;
+    }
+
+    [data-theme='dark'] {
+      --primary: #3b82f6;
+      --primary-rgb: 59, 130, 246;
+      --secondary: #60a5fa;
+      --accent: #94a3b8;
+      --muted: #334155;
+      --surface: #0f172a;
+      --text: #e2e8f0;
+      --card: #1e293b;
+      --border: #334155;
+      --header: #111827;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      height: 100%;
+      overflow: hidden;
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    /* ── Top bar ── */
+    .app-shell {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .top-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 14px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .btn-load-doc {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn-load-doc:hover { opacity: 0.82; }
+
+    .btn-load-doc svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+    .loaded-filename {
+      font-size: 12px;
+      color: var(--accent);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 320px;
+    }
+
+    /* ── Main three-column layout ── */
+    .main-layout {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: var(--header);
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .panel-title {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .panel-badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 8px;
+      font-weight: 500;
+    }
+
+    .badge-xml  { background: #2980b9; color: #fff; }
+    .badge-json { background: #27ae60; color: #fff; }
+
+    .panel-viewer {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    #dvContainer, #wsContainer {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ── Center controls column ── */
+    .center-controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 0 10px;
+      background: var(--card);
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      flex-shrink: 0;
+      width: 64px;
+    }
+
+    .controls-label {
+      font-size: 9px;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      user-select: none;
+    }
+
+    .arrow-btn {
+      width: 44px;
+      height: 44px;
+      border: 2px solid var(--primary);
+      border-radius: 12px;
+      background: var(--card);
+      color: var(--primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .arrow-btn:hover:not(:disabled) {
+      background: var(--primary);
+      color: #fff;
+      transform: scale(1.08);
+    }
+
+    .arrow-btn:active:not(:disabled) {
+      transform: scale(0.96);
+    }
+
+    .arrow-btn:disabled {
+      opacity: 0.25;
+      cursor: not-allowed;
+    }
+
+    .arrow-btn svg {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+
+    /* ── Download buttons (in panel headers) ── */
+    .btn-download {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 6px;
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-download:hover:not(:disabled) {
+      background: rgba(255,255,255,0.2);
+    }
+
+    .btn-download:disabled {
+      opacity: 0.25;
+      cursor: not-allowed;
+    }
+
+    .btn-download svg {
+      width: 13px;
+      height: 13px;
+      flex-shrink: 0;
+    }
+
+    /* ── Toast notifications ── */
+    .toast-container {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast {
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #fff;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.3s, transform 0.3s;
+      pointer-events: auto;
+      max-width: 340px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+
+    .toast.visible { opacity: 1; transform: translateY(0); }
+    .toast-info    { background: var(--secondary); }
+    .toast-success { background: #27ae60; }
+    .toast-error   { background: #c0392b; }
+
+    /* ── Backend error placeholder ── */
+    .backend-error {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    .backend-error .error-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: rgba(var(--primary-rgb), 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1rem;
+    }
+
+    .backend-error h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .backend-error p {
+      font-size: 0.8rem;
+      color: var(--accent);
+      line-height: 1.5;
+      max-width: 300px;
+    }
+
+    .backend-error code {
+      display: inline-block;
+      background: rgba(var(--primary-rgb), 0.06);
+      color: var(--primary);
+      padding: 4px 10px;
+      border-radius: 5px;
+      font-size: 0.75rem;
+      margin-top: 0.75rem;
+      font-family: ui-monospace, monospace;
+    }
+
+    /* ── Panel header button group ── */
+    .header-actions {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    /* ── Comparison overlay ── */
+    .comparison-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100000;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+    }
+
+    .comparison-overlay.visible { display: flex; }
+
+    .comparison-card {
+      display: flex;
+      flex-direction: column;
+      margin: 20px;
+      flex: 1;
+      background: var(--card);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+
+    .comparison-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--header);
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .comparison-header h2 {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .btn-close-overlay {
+      padding: 6px 14px;
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 6px;
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-close-overlay:hover { background: rgba(255,255,255,0.25); }
+
+    .comparison-body {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .code-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .code-panel + .code-panel {
+      border-left: 1px solid var(--border);
+    }
+
+    .code-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 14px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .code-panel-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .btn-copy {
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--card);
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-copy:hover {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    .code-content {
+      flex: 1;
+      overflow: auto;
+      padding: 12px 14px;
+      margin: 0;
+      font-family: ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, monospace;
+      font-size: 11.5px;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--card);
+      white-space: pre;
+      tab-size: 2;
+    }
+
+    .code-content::-webkit-scrollbar { width: 6px; height: 6px; }
+    .code-content::-webkit-scrollbar-track { background: var(--surface); }
+    .code-content::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 3px; }
+    .code-content::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+    .code-empty {
+      color: var(--accent);
+      font-style: italic;
+    }
+  </style>
+</head>
+
+<body>
+  <input type="file" id="file-input" accept=".pdf,.PDF" style="display:none" />
+  <div class="app-shell">
+  <div class="top-bar">
+    <button class="btn-load-doc" id="btn-load-doc">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="12" y1="18" x2="12" y2="12"/>
+        <line x1="9" y1="15" x2="15" y2="15"/>
+      </svg>
+      Load Document
+    </button>
+    <button class="btn-load-doc" id="btn-load-sample" title="Load the sample PDF in both viewers">
+      Load sample
+    </button>
+    <span class="loaded-filename" id="loaded-filename">No document loaded</span>
+  </div>
+  <div class="main-layout">
+    <!-- ── Left Panel: DocuVieware ── -->
+    <div class="panel">
+      <div class="panel-header">
+        <span>
+          <span class="panel-title">DocuVieware</span>
+          <span class="panel-badge badge-xml">XML</span>
+        </span>
+        <span class="header-actions">
+          <button class="btn-download" id="btn-show-xml" disabled
+                  title="Show XML/XMP annotation format">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 18l6-6-6-6"/><path d="M8 6l-6 6 6 6"/>
+            </svg>
+            Show XML
+          </button>
+          <button class="btn-download" id="btn-download-xml" disabled
+                  title="Download annotations as GdPicture XML">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download XML
+          </button>
+        </span>
+      </div>
+      <div class="panel-viewer">
+        <div id="dvContainer"></div>
+      </div>
+    </div>
+
+    <!-- ── Center: Transfer Controls ── -->
+    <div class="center-controls">
+      <button class="arrow-btn" id="btn-to-websdk" disabled
+              title="Transfer DocuVieware annotations to WebSDK">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"/>
+          <polyline points="12 5 19 12 12 19"/>
+        </svg>
+      </button>
+
+      <span class="controls-label">Transfer</span>
+
+      <button class="arrow-btn" id="btn-to-dv" disabled
+              title="Transfer WebSDK annotations to DocuVieware">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"/>
+          <polyline points="12 19 5 12 12 5"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- ── Right Panel: WebSDK ── -->
+    <div class="panel">
+      <div class="panel-header">
+        <span>
+          <span class="panel-title">Nutrient Web SDK</span>
+          <span class="panel-badge badge-json">InstantJSON</span>
+        </span>
+        <span class="header-actions">
+          <button class="btn-download" id="btn-show-json" disabled
+                  title="Show InstantJSON annotation format">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 18l6-6-6-6"/><path d="M8 6l-6 6 6 6"/>
+            </svg>
+            Show JSON
+          </button>
+          <button class="btn-download" id="btn-download-json" disabled
+                  title="Download annotations as InstantJSON">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download InstantJSON
+          </button>
+        </span>
+      </div>
+      <div class="panel-viewer">
+        <div id="wsContainer"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Comparison Overlay ── -->
+  <div class="comparison-overlay" id="comparison-overlay">
+    <div class="comparison-card">
+      <div class="comparison-header">
+        <h2>Annotation Format Comparison</h2>
+        <button class="btn-close-overlay" id="btn-close-comparison">Close</button>
+      </div>
+      <div class="comparison-body">
+        <div class="code-panel">
+          <div class="code-panel-header">
+            <span class="code-panel-title">DocuVieware XML/XMP</span>
+            <button class="btn-copy" id="btn-copy-xml">Copy</button>
+          </div>
+          <pre class="code-content" id="code-xml"><span class="code-empty">No annotations. Draw annotations in DocuVieware first.</span></pre>
+        </div>
+        <div class="code-panel">
+          <div class="code-panel-header">
+            <span class="code-panel-title">WebSDK InstantJSON</span>
+            <button class="btn-copy" id="btn-copy-json">Copy</button>
+          </div>
+          <pre class="code-content" id="code-json"><span class="code-empty">No annotations. Draw annotations in WebSDK first.</span></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <!-- Toast container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="annotation-converter.js"></script>
+</body>
+</html>
