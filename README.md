@@ -1,5 +1,7 @@
 # Nutrient Annotation Converter
 
+# DICLAIMER: This sample is outdated, we have now methods to do XML/XMP <> InstantJSON annotations conversion.
+
 A Nutrient.io demo that converts annotations in both directions between the GdPicture/DocuVieware XML format and Nutrient Web SDK Instant JSON, with both viewers side by side on the same PDF.
 
 ![The same annotations in DocuVieware (left) and Nutrient Web SDK (right) after a transfer](docs/screenshots/01-docuvieware-to-websdk.png)
